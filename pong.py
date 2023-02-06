@@ -8,16 +8,20 @@ pygame.init()
 # Define some colors
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
+FRAME_RATE = 60
 
 # Open a new window
 size = (700, 500)
 screen = pygame.display.set_mode(size)
 pygame.display.set_caption("Pong")
 
+# paddleA is the "player", aka the human player in Pong
+# eventually, this will become the reinforcement learner
 paddleA = Paddle(WHITE, 10, 100)
 paddleA.rect.x = 20
 paddleA.rect.y = 200
 
+# paddleB is the "computer", aka the traditional opponent in Pong
 paddleB = Paddle(WHITE, 10, 100)
 paddleB.rect.x = 670
 paddleB.rect.y = 200
@@ -65,7 +69,7 @@ while carryOn:
     if keys[pygame.K_DOWN]:
         paddleB.move_down(5)
 
-        # --- Game logic should go here
+    # --- Game logic should go here
     all_sprites_list.update()
 
     # Check if the ball is bouncing against any of the 4 walls:
@@ -105,7 +109,7 @@ while carryOn:
     pygame.display.flip()
 
     # --- Limit to 60 frames per second
-    clock.tick(60)
+    clock.tick(FRAME_RATE)
 
 # Once we have exited the main program loop we can stop the game engine:
 pygame.quit()

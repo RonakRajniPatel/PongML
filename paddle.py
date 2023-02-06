@@ -22,6 +22,10 @@ class Paddle(pygame.sprite.Sprite):
         # Fetch the rectangle object that has the dimensions of the image.
         self.rect = self.image.get_rect()
 
+    # if this paddle is an AI, do this method in the main loop
+    #def
+        # check where the ball is and see where I need to move
+
     def move_up(self, pixels):
         self.rect.y -= pixels
         # Check that you are not going too far (off the screen)
