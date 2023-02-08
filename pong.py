@@ -3,6 +3,11 @@ import pygame
 from paddle import Paddle
 from ball import Ball
 
+
+def vision_test():
+    print("branch test for david hall")
+
+
 pygame.init()
 
 # Define some colors
@@ -71,6 +76,7 @@ while carryOn:
 
     # --- Game logic should go here
     all_sprites_list.update()
+
 
     # Check if the ball is bouncing against any of the 4 walls:
     if ball.rect.x >= 690:
