@@ -2,11 +2,18 @@
 import pygame
 from paddle import Paddle
 from ball import Ball
+import screen_capturer
+import os, os.path
 
 
-def vision_test():
-    print("branch test for david hall")
-    print("commit test")
+def init_picture_dir():
+    directory = '/pics'
+    if os.path.exists(directory):
+        picture_index = len([name for name in os.listdir(directory) if os.path.isfile(name)])
+    else:
+        os.mkdir(directory)
+        picture_index = 0
+    return picture_index
 
 
 pygame.init()
@@ -53,6 +60,8 @@ clock = pygame.time.Clock()
 # Initialise player scores
 scoreA = 0
 scoreB = 0
+
+PICTURE_INDEX = init_picture_dir()
 
 # -------- Main Program Loop -----------
 while carryOn:
