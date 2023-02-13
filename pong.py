@@ -1,15 +1,21 @@
 # Import the pygame library and initialise the game engine
+import os
+import os.path
 import pygame
-from paddle import Paddle
-from ball import Ball
+
 import screen_capturer
-import os, os.path
+from ball import Ball
+from paddle import Paddle
 
 
 def init_picture_dir():
-    directory = '/pics'
+    directory = 'pics'
+    picture_index = 0
     if os.path.exists(directory):
-        picture_index = len([name for name in os.listdir(directory) if os.path.isfile(name)])
+        for path in os.listdir(directory):
+            if os.path.isfile(os.path.join(directory, path)):
+                picture_index += 1
+        print(picture_index)
     else:
         os.mkdir(directory)
         picture_index = 0
@@ -62,6 +68,8 @@ scoreA = 0
 scoreB = 0
 
 PICTURE_INDEX = init_picture_dir()
+# screen_capturer.capture(PICTURE_INDEX)
+print(PICTURE_INDEX)
 
 # -------- Main Program Loop -----------
 while carryOn:
@@ -87,6 +95,38 @@ while carryOn:
     # --- Game logic should go here
     all_sprites_list.update()
 
+    # do the intelligent movement
+    # ball is heading towards paddleB
+    if ball.velocity[0] > 0:
+        frames_until_collision = int((690 - ball.rect.x) / ball.velocity[0])
+        total_y_to_travel = frames_until_collision * abs(ball.velocity[1])
+        bounces = 0
+        # ball is travelling up
+        if ball.velocity[1] > 0:
+            dist_1 = total_y_to_travel - (500 - ball.rect.y)
+            bounces = int(dist_1 / 500)
+        # ball is travelling down
+        else:
+            dist_1 = total_y_to_travel - ball.rect.y
+            bounces = int(dist_1 / 500)
+
+        remaining_y_to_travel = total_y_to_travel - (bounces * 500)
+        predicted_y = 0
+        if bounces % 2 == 0:
+            if ball.velocity[1] > 0:
+                predicted_y = ball.rect.y + remaining_y_to_travel
+            else:
+                predicted_y = ball.rect.y - remaining_y_to_travel
+        else:
+            # if the ball is heading up, it'll end up going down
+            if ball.velocity[1] > 0:
+                predicted_y = ball.rect.y - remaining_y_to_travel
+            else:
+                predicted_y = ball.rect.y + remaining_y_to_travel
+        print(f'frames until collision: {frames_until_collision}')
+        print(f'bounces: {bounces}')
+        print(predicted_y)
+        paddleB.head_to_y(predicted_y, 5)
 
     # Check if the ball is bouncing against any of the 4 walls:
     if ball.rect.x >= 690:
