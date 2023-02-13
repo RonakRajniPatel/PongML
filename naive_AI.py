@@ -7,14 +7,14 @@ def predict_y(ball_velocity, ball_pos):
     bounces = 0
     # ball is travelling up
     if ball_velocity[1] > 0:
-        dist_1 = total_y_to_travel - (500 - ball_pos.y)
-        bounces = int(dist_1 / 500)
+        dist_1 = total_y_to_travel - (490 - ball_pos.y)
+        bounces = int(dist_1 / 490)
     # ball is travelling down
     else:
         dist_1 = total_y_to_travel - ball_pos.y
-        bounces = int(dist_1 / 500)
+        bounces = int(dist_1 / 490)
 
-    remaining_y_to_travel = total_y_to_travel - (bounces * 500)
+    remaining_y_to_travel = total_y_to_travel - (bounces * 490)
     predicted_y = 0
     if bounces % 2 == 0:
         if ball_velocity[1] > 0:
