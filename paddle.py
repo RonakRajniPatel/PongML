@@ -43,10 +43,7 @@ class Paddle(pygame.sprite.Sprite):
             self.rect.y = 0
         elif self.rect.y > 400:
             self.rect.y = 400
-        if (self.rect.y + 50) == destination:
-            print('I\'m here!')
-            # do nothing
-        else:
+        if not ((self.rect.y + 50) == destination):
             if destination > (self.rect.y + 50):
                 self.rect.y += pixels
             else:

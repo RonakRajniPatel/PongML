@@ -3,9 +3,11 @@ import os
 import os.path
 import pygame
 
+import naive_AI
 import screen_capturer
 from ball import Ball
 from paddle import Paddle
+import naive_AI
 
 
 def init_picture_dir():
@@ -27,7 +29,11 @@ pygame.init()
 # Define some colors
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
+SPEED_FACTOR = 1
 FRAME_RATE = 60
+PLAYER_BASE_MOVEMENT_SPEED = 5
+predicted_y = 0
+just_bounced = False
 
 # Open a new window
 size = (700, 500)
@@ -45,7 +51,7 @@ paddleB = Paddle(WHITE, 10, 100)
 paddleB.rect.x = 670
 paddleB.rect.y = 200
 
-ball = Ball(WHITE, 10, 10)
+ball = Ball(WHITE, 10, 10, SPEED_FACTOR)
 ball.rect.x = 345
 ball.rect.y = 195
 
@@ -84,66 +90,47 @@ while carryOn:
     # Moving the paddles when the user uses the arrow keys (player A) or "W/S" keys (player B)
     keys = pygame.key.get_pressed()
     if keys[pygame.K_w]:
-        paddleA.move_up(5)
+        paddleA.move_up(SPEED_FACTOR * PLAYER_BASE_MOVEMENT_SPEED)
     if keys[pygame.K_s]:
-        paddleA.move_down(5)
-    if keys[pygame.K_UP]:
-        paddleB.move_up(5)
-    if keys[pygame.K_DOWN]:
-        paddleB.move_down(5)
+        paddleA.move_down(SPEED_FACTOR * PLAYER_BASE_MOVEMENT_SPEED)
+    # if keys[pygame.K_UP]:
+    #     paddleB.move_up(5)
+    # if keys[pygame.K_DOWN]:
+    #     paddleB.move_down(5)
+    paddleB.head_to_y(predicted_y, SPEED_FACTOR * PLAYER_BASE_MOVEMENT_SPEED)
 
     # --- Game logic should go here
     all_sprites_list.update()
 
     # do the intelligent movement
     # ball is heading towards paddleB
-    if ball.velocity[0] > 0:
-        frames_until_collision = int((690 - ball.rect.x) / ball.velocity[0])
-        total_y_to_travel = frames_until_collision * abs(ball.velocity[1])
-        bounces = 0
-        # ball is travelling up
-        if ball.velocity[1] > 0:
-            dist_1 = total_y_to_travel - (500 - ball.rect.y)
-            bounces = int(dist_1 / 500)
-        # ball is travelling down
-        else:
-            dist_1 = total_y_to_travel - ball.rect.y
-            bounces = int(dist_1 / 500)
-
-        remaining_y_to_travel = total_y_to_travel - (bounces * 500)
-        predicted_y = 0
-        if bounces % 2 == 0:
-            if ball.velocity[1] > 0:
-                predicted_y = ball.rect.y + remaining_y_to_travel
-            else:
-                predicted_y = ball.rect.y - remaining_y_to_travel
-        else:
-            # if the ball is heading up, it'll end up going down
-            if ball.velocity[1] > 0:
-                predicted_y = ball.rect.y - remaining_y_to_travel
-            else:
-                predicted_y = ball.rect.y + remaining_y_to_travel
-        print(f'frames until collision: {frames_until_collision}')
-        print(f'bounces: {bounces}')
-        print(predicted_y)
-        paddleB.head_to_y(predicted_y, 5)
+    if just_bounced:
+        if ball.velocity[0] > 0:
+            predicted_y = naive_AI.predict_y(ball.velocity, ball.rect)
+        just_bounced = False
 
     # Check if the ball is bouncing against any of the 4 walls:
     if ball.rect.x >= 690:
         scoreA += 1
         ball.go_home()
+        just_bounced = True
     if ball.rect.x <= 0:
         scoreB += 1
         ball.go_home()
+        just_bounced = True
 
     if ball.rect.y > 490:
         ball.velocity[1] = -ball.velocity[1]
+        just_bounced = True
     if ball.rect.y < 0:
         ball.velocity[1] = -ball.velocity[1]
+        just_bounced = True
 
     # Detect collisions between the ball and the paddles
     if pygame.sprite.collide_mask(ball, paddleA) or pygame.sprite.collide_mask(ball, paddleB):
+
         ball.bounce()
+        just_bounced = True
 
     # --- Drawing code should go here
     # First, clear the screen to black.
