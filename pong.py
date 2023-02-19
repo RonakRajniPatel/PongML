@@ -3,11 +3,11 @@ import os
 import os.path
 import pygame
 
-import naive_AI
-import screen_capturer
 from ball import Ball
 from paddle import Paddle
 import naive_AI
+import cv2 as cv
+import DQAgent
 import numpy as np
 import random
 from IPython.display import clear_output
@@ -47,9 +47,15 @@ for episode in range(0, num_episodes):
     just_bounced = False
 
     # Open a new window
-    size = (700, 500)
-    screen = pygame.display.set_mode(size)
-    pygame.display.set_caption("Pong")
+    # size = (700, 500)
+    # screen = pygame.display.set_mode(size, pygame.RESIZABLE)
+    # pygame.display.set_caption("Pong")
+
+    # #open CV to scale down resolution
+    # cv.namedWindow("screen", cv.WINDOW_NORMAL)
+    # im = cv.sc
+    # cv.resizeWindow("screen", 70, 50)
+
 
     # paddleA is the "player", aka the human player in Pong
     # eventually, this will become the reinforcement learner
