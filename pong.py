@@ -57,10 +57,10 @@ update_after_actions = 4
 update_target_network = 10000
 
 # Use the Baseline Atari environment because of Deepmind helper functions
-env = make_atari("BreakoutNoFrameskip-v4")
+#env = make_atari("BreakoutNoFrameskip-v4")
 # Warp the frames, grey scale, stake four frame and scale to smaller ratio
-env = wrap_deepmind(env, frame_stack=True, scale=True)
-env.seed(seed)
+#env = wrap_deepmind(env, frame_stack=True, scale=True)
+#env.seed(seed)
 
 
 num_episodes = 1000
@@ -156,16 +156,6 @@ for episode in range(0, num_episodes):
                     carryOn = False
                     close_game = True
 
-        # Moving the paddles when the user uses the arrow keys (player A) or "W/S" keys (player B)
-        keys = pygame.key.get_pressed()
-        if keys[pygame.K_w]:
-            paddleA.move_up(SPEED_FACTOR * PLAYER_BASE_MOVEMENT_SPEED)
-        if keys[pygame.K_s]:
-            paddleA.move_down(SPEED_FACTOR * PLAYER_BASE_MOVEMENT_SPEED)
-        # if keys[pygame.K_UP]:
-        #     paddleB.move_up(5)
-        # if keys[pygame.K_DOWN]:
-        #     paddleB.move_down(5)
         paddleB.head_to_y(predicted_y, SPEED_FACTOR * PLAYER_BASE_MOVEMENT_SPEED)
 
         # --- Game logic should go here
@@ -191,9 +181,22 @@ for episode in range(0, num_episodes):
         epsilon = max(epsilon, epsilon_min)
 
         # Apply the sampled action in our environment
-        state_next, reward, done, _ = env.step(action)
-        state_next = np.array(state_next)
+        #state_next, reward, done, _ = env.step(action)
 
+        ###
+        # Moving the paddles when the user uses the arrow keys (player A) or "W/S" keys (player B)
+        keys = pygame.key.get_pressed()
+        if keys[action == 0]:
+            paddleA.move_up(SPEED_FACTOR * PLAYER_BASE_MOVEMENT_SPEED)
+        elif keys[action == 0]:
+            paddleA.move_down(SPEED_FACTOR * PLAYER_BASE_MOVEMENT_SPEED)
+        else:
+            paddleA.stay_here()
+        ###
+
+        #state_next = np.array(state_next)
+        state_next = pygame.surfarray.array2d(pygame.display.get_surface())
+        state_next.swapaxes(0, 1)
         episode_reward += reward
 
         # Save actions and states in replay buffer
@@ -259,9 +262,6 @@ for episode in range(0, num_episodes):
             del state_next_history[:1]
             del action_history[:1]
             del done_history[:1]
-
-        if done:
-            break
 
         # TODO: END DEEP Q LEARNER SECTION
 

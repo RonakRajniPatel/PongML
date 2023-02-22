@@ -38,6 +38,9 @@ class Paddle(pygame.sprite.Sprite):
         if self.rect.y > 400:
             self.rect.y = 400
 
+    def stay_here(self):
+        return
+
     def head_to_y(self, destination, pixels):
         if self.rect.y < 0:
             self.rect.y = 0
