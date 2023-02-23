@@ -12,6 +12,8 @@ import tensorflow as tf
 import DQLearner
 import random
 from IPython.display import clear_output
+from skimage.transform import resize
+from skimage.color import rgb2gray
 
 
 # Configuration paramaters for the whole setup
@@ -25,14 +27,26 @@ epsilon_interval = (
 )  # Rate at which to reduce chance of random action being taken
 batch_size = 32  # Size of batch taken from replay buffer
 max_steps_per_episode = 10000
+# save the learner whenever the game is exited
+SAVE_LEARNER = True
+RESTART_LEARNING = False
 
-# The first model makes the predictions for Q-values which are used to
-# make a action.
-model = DQLearner.create_q_model()
-# Build a target model for the prediction of future rewards.
-# The weights of a target model get updated every 10000 steps thus when the
-# loss between the Q-values is calculated the target Q-value is stable.
-model_target = DQLearner.create_q_model()
+if RESTART_LEARNING:
+    # The first model makes the predictions for Q-values which are used to
+    # make a action.
+    model = DQLearner.create_q_model()
+    print(model.summary())
+    # Build a target model for the prediction of future rewards.
+    # The weights of a target model get updated every 10000 steps thus when the
+    # loss between the Q-values is calculated the target Q-value is stable.
+    model_target = DQLearner.create_q_model()
+else:
+    if os.path.isfile("model") and os.path.isfile("model_target"):
+        model = tf.keras.models.load_model("model")
+        model_target = tf.keras.models.load_model("model_target")
+    else:
+        model = DQLearner.create_q_model()
+        model_target = DQLearner.create_q_model()
 
 # Experience replay buffers
 action_history = []
@@ -52,16 +66,18 @@ epsilon_greedy_frames = 1000000.0
 # Note: The Deepmind paper suggests 1000000 however this causes memory issues
 max_memory_length = 100000
 # Train the model after 4 actions
-update_after_actions = 4
+update_after_actions = 8
 # How often to update the target network
 update_target_network = 10000
-
-# Use the Baseline Atari environment because of Deepmind helper functions
-#env = make_atari("BreakoutNoFrameskip-v4")
-# Warp the frames, grey scale, stake four frame and scale to smaller ratio
-#env = wrap_deepmind(env, frame_stack=True, scale=True)
-#env.seed(seed)
-
+# Define some colors
+BLACK = (0, 0, 0)
+WHITE = (255, 255, 255)
+# Speed to multiply all movements by
+SPEED_FACTOR = 1
+# Maximum number of allowed frames per second
+FRAME_RATE = 120
+# How many pixels per frame the player can move
+PLAYER_BASE_MOVEMENT_SPEED = 3
 
 num_episodes = 1000
 close_game = False
@@ -88,37 +104,32 @@ def reset_game():
 for episode in range(0, num_episodes):
     pygame.init()
 
-    # Define some colors
-    BLACK = (0, 0, 0)
-    WHITE = (255, 255, 255)
-    SPEED_FACTOR = 1
-    FRAME_RATE = 60
-    PLAYER_BASE_MOVEMENT_SPEED = 5
     predicted_y = 0
     just_bounced = False
     frame_count_episode = 0
-    state = np.zeros(shape=(700, 500))
+    state = np.zeros(shape=(350, 250))
     episode_reward = 0
+    playerA_times_paddled = 0
 
     # Open a new window
-    size = (700, 500)
+    size = (350, 250)
     screen = pygame.display.set_mode(size)
     pygame.display.set_caption("Pong")
 
     # paddleA is the "player", aka the human player in Pong
     # eventually, this will become the reinforcement learner
-    paddleA = Paddle(WHITE, 10, 100)
-    paddleA.rect.x = 20
-    paddleA.rect.y = 200
+    paddleA = Paddle(WHITE, 5, 50)
+    paddleA.rect.x = 10
+    paddleA.rect.y = 100
 
     # paddleB is the "computer", aka the traditional opponent in Pong
-    paddleB = Paddle(WHITE, 10, 100)
-    paddleB.rect.x = 670
-    paddleB.rect.y = 200
+    paddleB = Paddle(WHITE, 5, 50)
+    paddleB.rect.x = 335
+    paddleB.rect.y = 100
 
-    ball = Ball(WHITE, 10, 10, SPEED_FACTOR)
-    ball.rect.x = 345
-    ball.rect.y = 195
+    ball = Ball(WHITE, 5, 5, SPEED_FACTOR)
+    ball.rect.x = 172
+    ball.rect.y = 97
 
     # This will be a list that will contain all the sprites we intend to use in our game.
     all_sprites_list = pygame.sprite.Group()
@@ -138,13 +149,14 @@ for episode in range(0, num_episodes):
     scoreA = 0
     scoreB = 0
 
-    PICTURE_INDEX = init_picture_dir()
+    #PICTURE_INDEX = init_picture_dir()
     # screen_capturer.capture(PICTURE_INDEX)
-    print(PICTURE_INDEX)
+    #print(PICTURE_INDEX)
 
     # -------- Main Program Loop -----------
     while carryOn:
         frame_count_episode += 1
+        reward = 0
 
         # --- Main event loop
         for event in pygame.event.get():  # User did something
@@ -155,6 +167,9 @@ for episode in range(0, num_episodes):
                 if event.key == pygame.K_x:  # Pressing the x Key will quit the game
                     carryOn = False
                     close_game = True
+                # pressing the k key ends the current episode (if the ball gets stuck or whatever)
+                elif event.key == pygame.K_k:
+                    carryOn = reset_game()
 
         paddleB.head_to_y(predicted_y, SPEED_FACTOR * PLAYER_BASE_MOVEMENT_SPEED)
 
@@ -185,25 +200,94 @@ for episode in range(0, num_episodes):
 
         ###
         # Moving the paddles when the user uses the arrow keys (player A) or "W/S" keys (player B)
+        #print(f'action = {action}')
         keys = pygame.key.get_pressed()
-        if keys[action == 0]:
+        if action == 0:
             paddleA.move_up(SPEED_FACTOR * PLAYER_BASE_MOVEMENT_SPEED)
-        elif keys[action == 0]:
+        elif action == 1:
             paddleA.move_down(SPEED_FACTOR * PLAYER_BASE_MOVEMENT_SPEED)
         else:
+            # action = 3
             paddleA.stay_here()
         ###
 
+        # do the intelligent movement
+        # ball is heading towards paddleB
+        if just_bounced:
+            if ball.velocity[0] > 0:
+                predicted_y = naive_AI.predict_y(ball.velocity, ball.rect)
+            just_bounced = False
+
+        # Check if the ball is bouncing against any of the 4 walls:
+        if ball.rect.x >= 345:
+            scoreA += 1
+            reward += .25
+            ball.go_home()
+            predicted_y = naive_AI.predict_y(ball.velocity, ball.rect)
+            just_bounced = True
+        if ball.rect.x <= 5:
+            scoreB += 1
+            reward -= .75
+            ball.go_home()
+            predicted_y = naive_AI.predict_y(ball.velocity, ball.rect)
+            just_bounced = True
+
+        if ball.rect.y > 245:
+            ball.velocity[1] = -ball.velocity[1]
+            just_bounced = True
+        if ball.rect.y < 0:
+            ball.velocity[1] = -ball.velocity[1]
+            just_bounced = True
+
+        player_dist_to_ball = abs(paddleA.rect.y - ball.rect.y + 23) + .2
+        #print(f'dist = {player_dist_to_ball}')
+        #reward = scoreA
+        #reward -= scoreB
+        dist_reward = min(2, (4 * pow(player_dist_to_ball, -1)))
+        reward += dist_reward
+        #reward += 2/(player_dist_to_ball + 1)
+
+        # Detect collisions between the ball and the paddles
+        if pygame.sprite.collide_mask(ball, paddleA) or pygame.sprite.collide_mask(ball, paddleB):
+            if pygame.sprite.collide_mask(ball, paddleA):
+                ball.bounce_off_paddle(True)
+                playerA_times_paddled += 1
+                reward += .75
+            else:
+                # ball bounced off the opponent (right side) paddle
+                ball.bounce_off_paddle(False)
+            just_bounced = True
+
+        #print(f'reward = {reward}')
+
         #state_next = np.array(state_next)
-        state_next = pygame.surfarray.array2d(pygame.display.get_surface())
-        state_next.swapaxes(0, 1)
+# TODO: THIS IS WHERE THE GAME SCREEN ARRAY IS TAKEN
+        # references the array of pixels on the screen (faster)
+        state_next = pygame.surfarray.pixels3d(pygame.display.get_surface())
+
+        # copies the array of pixels on the screen
+        # state_next = pygame.surfarray.array2d(pygame.display.get_surface())
+        state_next = rgb2gray(state_next)
+        # state_next = resize(state_next, (175, 125))
+        #state_next.swapaxes(0, 1)
+
+        # if either player has a score of 10 or more, reset the game
+        if scoreA >= 5 or scoreB >= 5 or frame_count_episode >= 10000:
+            if scoreB >= 5:
+                reward = -10 + scoreA
+            elif scoreA >= 5:
+                reward = 10 - scoreB
+            carryOn = reset_game()
+
         episode_reward += reward
+
+
 
         # Save actions and states in replay buffer
         action_history.append(action)
         state_history.append(state)
         state_next_history.append(state_next)
-        done_history.append(done)
+        done_history.append(carryOn)
         rewards_history.append(reward)
         state = state_next
 
@@ -213,6 +297,8 @@ for episode in range(0, num_episodes):
             indices = np.random.choice(range(len(done_history)), size=batch_size)
 
             # Using list comprehension to sample from replay buffer
+            #print(state_history.shape)
+            #print("performing sampling logic!")
             state_sample = np.array([state_history[i] for i in indices])
             state_next_sample = np.array([state_next_history[i] for i in indices])
             rewards_sample = [rewards_history[i] for i in indices]
@@ -223,7 +309,7 @@ for episode in range(0, num_episodes):
 
             # Build the updated Q-values for the sampled future states
             # Use the target model for stability
-            future_rewards = model_target.predict(state_next_sample)
+            future_rewards = model_target.predict(state_next_sample, verbose=0)
             # Q value = reward + discount factor * expected future reward
             updated_q_values = rewards_sample + gamma * tf.reduce_max(
                 future_rewards, axis=1
@@ -265,50 +351,21 @@ for episode in range(0, num_episodes):
 
         # TODO: END DEEP Q LEARNER SECTION
 
-        # do the intelligent movement
-        # ball is heading towards paddleB
-        if just_bounced:
-            if ball.velocity[0] > 0:
-                predicted_y = naive_AI.predict_y(ball.velocity, ball.rect)
-            just_bounced = False
-
-        # Check if the ball is bouncing against any of the 4 walls:
-        if ball.rect.x >= 690:
-            scoreA += 1
-            ball.go_home()
-            just_bounced = True
-        if ball.rect.x <= 0:
-            scoreB += 1
-            ball.go_home()
-            just_bounced = True
-
-        if ball.rect.y > 490:
-            ball.velocity[1] = -ball.velocity[1]
-            just_bounced = True
-        if ball.rect.y < 0:
-            ball.velocity[1] = -ball.velocity[1]
-            just_bounced = True
-
-        # Detect collisions between the ball and the paddles
-        if pygame.sprite.collide_mask(ball, paddleA) or pygame.sprite.collide_mask(ball, paddleB):
-            ball.bounce()
-            just_bounced = True
-
         # --- Drawing code should go here
         # First, clear the screen to black.
         screen.fill(BLACK)
         # Draw the net
-        pygame.draw.line(screen, WHITE, [349, 0], [349, 500], 5)
+        pygame.draw.line(screen, WHITE, [174, 0], [174, 250], 2)
 
         # Now let's draw all the sprites in one go. (For now we only have 2 sprites!)
         all_sprites_list.draw(screen)
 
         # Display scores:
-        font = pygame.font.Font(None, 74)
+        font = pygame.font.Font(None, 37)
         text = font.render(str(scoreA), 1, WHITE)
-        screen.blit(text, (250, 10))
+        screen.blit(text, (125, 5))
         text = font.render(str(scoreB), 1, WHITE)
-        screen.blit(text, (420, 10))
+        screen.blit(text, (210, 5))
 
         # --- Go ahead and update the screen with what we've drawn.
         pygame.display.flip()
@@ -316,23 +373,34 @@ for episode in range(0, num_episodes):
         # --- Limit to 60 frames per second
         clock.tick(FRAME_RATE)
 
-        # if either player has a score of 10 or more, reset the game
-        if scoreA >= 5 or scoreB >= 5 or frame_count_episode >= 10000:
-            carryOn = reset_game()
-
     # Update running reward to check condition for solving
     episode_reward_history.append(episode_reward)
     if len(episode_reward_history) > 100:
         del episode_reward_history[:1]
     running_reward = np.mean(episode_reward_history)
 
+    print(f'Episode {episode} is over.')
+    print(f'Final Score was {scoreA} - {scoreB}')
+    print(f'Learner hit the ball {playerA_times_paddled} times.')
+
     episode_count += 1
 
-    if running_reward > 40:  # Condition to consider the task solved
+    # save the model every 100th episode
+    if episode_count % 100 == 0 and SAVE_LEARNER:
+        model.save("model", save_format="h5", )
+        model_target.save("model_target", save_format="h5")
+
+    if running_reward > 1000:  # Condition to consider the task solved
         print("Solved at episode {}!".format(episode_count))
+        if SAVE_LEARNER:
+            model.save("model", save_format="h5",)
+            model_target.save("model_target", save_format="h5")
         break
 
     if close_game:
+        if SAVE_LEARNER:
+            model.save("model", save_format="h5")
+            model_target.save("model_target", save_format="h5")
         break
 
 # Once we have exited the main program loop we can stop the game engine:

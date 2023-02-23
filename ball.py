@@ -22,8 +22,8 @@ class Ball(pygame.sprite.Sprite):
         # Draw the ball (a rectangle!)
         pygame.draw.rect(self.image, color, [0, 0, width, height])
 
-        self.velocity = [randint(self.SPEED_FACTOR * 4, self.SPEED_FACTOR * 8),
-                         randint(self.SPEED_FACTOR * -8, self.SPEED_FACTOR * 8)]
+        self.velocity = [randint(self.SPEED_FACTOR * 3, self.SPEED_FACTOR * 4),
+                         randint(self.SPEED_FACTOR * -4, self.SPEED_FACTOR * 4)]
 
         # Fetch the rectangle object that has the dimensions of the image.
         self.rect = self.image.get_rect()
@@ -34,13 +34,20 @@ class Ball(pygame.sprite.Sprite):
 
     def bounce(self):
         self.velocity[0] = -self.velocity[0]
-        self.velocity[1] = randint(self.SPEED_FACTOR * -8, self.SPEED_FACTOR * 8)
+        self.velocity[1] = randint(self.SPEED_FACTOR * -4, self.SPEED_FACTOR * 4)
+
+    def bounce_off_paddle(self, player_paddle):
+        if player_paddle:
+            self.velocity[0] = abs(self.velocity[0])
+        else:
+            self.velocity[0] = -abs(self.velocity[0])
+        self.velocity[1] = randint(self.SPEED_FACTOR * -4, self.SPEED_FACTOR * 4)
 
     def go_home(self):
-        self.rect.x = 345
-        self.rect.y = 195
+        self.rect.x = 172
+        self.rect.y = 97
         pygame.time.wait(1000)
-        rand_dir = randint(-8, 8)
+        rand_dir = randint(-4, 4)
         while rand_dir == 0:
-            rand_dir = randint(-8, 8)
-        self.velocity = [self.SPEED_FACTOR * rand_dir, self.SPEED_FACTOR * randint(-8, 8)]
+            rand_dir = randint(-4, 4)
+        self.velocity = [self.SPEED_FACTOR * rand_dir, self.SPEED_FACTOR * randint(-4, 4)]

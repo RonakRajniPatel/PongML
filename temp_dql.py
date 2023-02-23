@@ -113,6 +113,6 @@ while True:  # Run until solved
 
     episode_count += 1
 
-    if running_reward > 40:  # Condition to consider the task solved
+    if running_reward > 150:  # Condition to consider the task solved
         print("Solved at episode {}!".format(episode_count))
         break

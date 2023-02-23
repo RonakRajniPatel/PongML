@@ -35,8 +35,8 @@ class Paddle(pygame.sprite.Sprite):
     def move_down(self, pixels):
         self.rect.y += pixels
         # Check that you are not going too far (off the screen)
-        if self.rect.y > 400:
-            self.rect.y = 400
+        if self.rect.y > 200:
+            self.rect.y = 200
 
     def stay_here(self):
         return
@@ -44,10 +44,10 @@ class Paddle(pygame.sprite.Sprite):
     def head_to_y(self, destination, pixels):
         if self.rect.y < 0:
             self.rect.y = 0
-        elif self.rect.y > 400:
-            self.rect.y = 400
-        if not ((self.rect.y + 50) == destination):
-            if destination > (self.rect.y + 50):
+        elif self.rect.y > 200:
+            self.rect.y = 200
+        if not ((self.rect.y + 25) == destination):
+            if destination > (self.rect.y + 25):
                 self.rect.y += pixels
             else:
                 self.rect.y -= pixels
