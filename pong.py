@@ -2,6 +2,8 @@
 import os
 import os.path
 import pygame
+
+import model_file_manager
 import naive_AI
 import screen_capturer
 from ball import Ball
@@ -19,7 +21,7 @@ from skimage.color import rgb2gray
 # Configuration paramaters for the whole setup
 seed = 42
 gamma = 0.99  # Discount factor for past rewards
-epsilon = 1.0  # Epsilon greedy parameter
+#epsilon = 1.0  # Epsilon greedy parameter
 epsilon_min = 0.1  # Minimum epsilon greedy parameter
 epsilon_max = 1.0  # Maximum epsilon greedy parameter
 epsilon_interval = (
@@ -27,11 +29,20 @@ epsilon_interval = (
 )  # Rate at which to reduce chance of random action being taken
 batch_size = 32  # Size of batch taken from replay buffer
 max_steps_per_episode = 10000
+model_file_manager.initialize_model_dir()
+model_filepath = os.path.join("model_data", "model")
+model_target_filepath = os.path.join("model_data", "model_target")
 # save the learner whenever the game is exited
 SAVE_LEARNER = True
 RESTART_LEARNING = False
 
 if RESTART_LEARNING:
+    epsilon = 1.0
+    episode_count = 0
+    frame_count = 0
+    model_file_manager.store_epsilon(epsilon)
+    model_file_manager.store_episodes(episode_count)
+    model_file_manager.store_frames(frame_count)
     # The first model makes the predictions for Q-values which are used to
     # make a action.
     model = DQLearner.create_q_model()
@@ -41,9 +52,12 @@ if RESTART_LEARNING:
     # loss between the Q-values is calculated the target Q-value is stable.
     model_target = DQLearner.create_q_model()
 else:
-    if os.path.isfile("model") and os.path.isfile("model_target"):
-        model = tf.keras.models.load_model("model")
-        model_target = tf.keras.models.load_model("model_target")
+    epsilon = model_file_manager.get_epsilon()
+    episode_count = model_file_manager.get_episodes()
+    frame_count = model_file_manager.get_frames()
+    if os.path.isfile(model_filepath) and os.path.isfile(model_target_filepath):
+        model = tf.keras.models.load_model(model_filepath)
+        model_target = tf.keras.models.load_model(model_target_filepath)
     else:
         model = DQLearner.create_q_model()
         model_target = DQLearner.create_q_model()
@@ -56,15 +70,17 @@ rewards_history = []
 done_history = []
 episode_reward_history = []
 running_reward = 0
-episode_count = 0
-frame_count = 0
+
+#episode_count = 0
+
+#frame_count = 0
 # Number of frames to take random action and observe output
 epsilon_random_frames = 50000
 # Number of frames for exploration
 epsilon_greedy_frames = 1000000.0
 # Maximum replay length
 # Note: The Deepmind paper suggests 1000000 however this causes memory issues
-max_memory_length = 100000
+max_memory_length = 16000
 # Train the model after 4 actions
 update_after_actions = 8
 # How often to update the target network
@@ -79,7 +95,7 @@ FRAME_RATE = 120
 # How many pixels per frame the player can move
 PLAYER_BASE_MOVEMENT_SPEED = 3
 
-num_episodes = 1000
+num_episodes = 10000
 close_game = False
 
 
@@ -101,7 +117,7 @@ def reset_game():
     return False
 
 
-for episode in range(0, num_episodes):
+for episode in range(0, (num_episodes - episode_count)):
     pygame.init()
 
     predicted_y = 0
@@ -155,6 +171,7 @@ for episode in range(0, num_episodes):
 
     # -------- Main Program Loop -----------
     while carryOn:
+        frame_count += 1
         frame_count_episode += 1
         reward = 0
 
@@ -379,7 +396,7 @@ for episode in range(0, num_episodes):
         del episode_reward_history[:1]
     running_reward = np.mean(episode_reward_history)
 
-    print(f'Episode {episode} is over.')
+    print(f'Episode {episode_count} is over.')
     print(f'Final Score was {scoreA} - {scoreB}')
     print(f'Learner hit the ball {playerA_times_paddled} times.')
 
@@ -387,20 +404,29 @@ for episode in range(0, num_episodes):
 
     # save the model every 100th episode
     if episode_count % 100 == 0 and SAVE_LEARNER:
-        model.save("model", save_format="h5", )
-        model_target.save("model_target", save_format="h5")
+        model.save(model_filepath, save_format="h5", )
+        model_target.save(model_target_filepath, save_format="h5")
+        model_file_manager.store_epsilon(epsilon)
+        model_file_manager.store_episodes(episode_count)
+        model_file_manager.store_frames(frame_count)
 
     if running_reward > 1000:  # Condition to consider the task solved
         print("Solved at episode {}!".format(episode_count))
         if SAVE_LEARNER:
-            model.save("model", save_format="h5",)
-            model_target.save("model_target", save_format="h5")
+            model.save(model_filepath, save_format="h5",)
+            model_target.save(model_target_filepath, save_format="h5")
+            model_file_manager.store_epsilon(epsilon)
+            model_file_manager.store_episodes(episode_count)
+            model_file_manager.store_frames(frame_count)
         break
 
     if close_game:
         if SAVE_LEARNER:
-            model.save("model", save_format="h5")
-            model_target.save("model_target", save_format="h5")
+            model.save(model_filepath, save_format="h5")
+            model_target.save(model_target_filepath, save_format="h5")
+            model_file_manager.store_epsilon(epsilon)
+            model_file_manager.store_episodes(episode_count - 1)
+            model_file_manager.store_frames(frame_count)
         break
 
 # Once we have exited the main program loop we can stop the game engine:
