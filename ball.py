@@ -32,9 +32,13 @@ class Ball(pygame.sprite.Sprite):
         self.rect.x += self.velocity[0]
         self.rect.y += self.velocity[1]
 
-    def bounce(self):
-        self.velocity[0] = -self.velocity[0]
-        self.velocity[1] = randint(self.SPEED_FACTOR * -4, self.SPEED_FACTOR * 4)
+    def bounce_off_wall(self):
+        # this if/else block addresses the issue where the ball would get stuck at the top or bottom
+        # of the screen and awkwardly slide across, making the game progress very slowly
+        if self.rect.y > 200: # ball is anywhere near the top of the screen
+            self.velocity[1] = -abs(self.velocity[1])
+        else: # ball is more likely near the bottom of the screen
+            self.velocity[1] = abs(self.velocity[1])
 
     def bounce_off_paddle(self, player_paddle):
         if player_paddle:
@@ -46,7 +50,7 @@ class Ball(pygame.sprite.Sprite):
     def go_home(self):
         self.rect.x = 172
         self.rect.y = 97
-        pygame.time.wait(1000)
+        pygame.time.wait(800)
         rand_dir = randint(-4, 4)
         while rand_dir == 0:
             rand_dir = randint(-4, 4)

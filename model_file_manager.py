@@ -111,3 +111,9 @@ def get_frames():
         print("Frame count file created. Frame value initialized to 0")
         frame_value.close()
         return 1
+
+
+def store_all(new_epsilon, new_episodes, new_frames):
+    store_epsilon(new_epsilon)
+    store_episodes(new_episodes)
+    store_frames(new_frames)

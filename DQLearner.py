@@ -23,7 +23,7 @@ def create_q_model():
 
     layer4 = layers.Conv2D(64, kernel_size=3, strides=2, activation="relu")(layer3)
 
-    layer5 = layers.Conv2D(96, kernel_size=3, strides=1, activation="relu")(layer4)
+    layer5 = layers.Conv2D(128, kernel_size=3, strides=1, activation="relu")(layer4)
 
     layer6 = layers.MaxPooling2D(pool_size=(2, 2))(layer5)
 
