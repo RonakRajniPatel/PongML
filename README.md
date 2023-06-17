@@ -1,2 +1,4 @@
-# PongML - vision Branch
-This is the vision fork where I'm going to work on implementing basic CV that will serve to identify elements of the screen that will make it possible for the RL/Q-L model to accurately learn to play.
+# PongML
+This is a pilot project for our Cuphead AI project. Cuphead AI project is an AI project made for our Senior Project Computer Science class. This pilot project was made to learn about the concepts of 
+	
+We first prototyped an AI by making one that plays a game of pong through a simplified prediction formula. It is our initial proof of concept and is a version of the AI that was scaled up to be implemented to the main Cuphead AI project. We set up an environment using PyCharm environments and created a Naive AI for our prototype AI to play against. The Naive AI uses the number of frames till collision to calculate where the pong paddle should be positioned to return the ball. After setting up a neural network for our Deep Q-Learning Agent, which involved setting up the input, output, and hidden layers of the network as well as their shapes, we trained this AI through 500 iterations and it did learn how to play pong and was able to score against the naive AI on occasions. 
